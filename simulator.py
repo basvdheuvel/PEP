@@ -1,4 +1,5 @@
 from collections import deque as queue
+# TODO: 'log' function wrapper.
 
 
 class MachineControl:
@@ -11,13 +12,18 @@ class MachineControl:
 
         self.event_buss = queue()
 
-    def start(self, machine):
+        self.ctx = None
+
+    def start_machine(self, machine_cls, ctx, *args, **kwargs):
+        machine = machine_cls(self, ctx, *args, **kwargs)
+
         self.machines.append(machine)
 
         self.add_event_reaction('start', machine, machine.init_state)
 
-        # TODO: Create phony context for outermost machines.
-        self.emit(Event('start', None, destination=machine))
+        self.emit(Event('start', ctx, destination=machine))
+
+        return machine
 
     def add_event_reaction(self, typ, reactor, state):
         if typ not in self.event_reactions:
@@ -36,7 +42,10 @@ class MachineControl:
     def emit(self, event):
         self.event_buss.append(event)
 
-    def run(self):
+    def run(self, machine_cls, *args, **kwargs):
+        self.ctx = StateMachine(self, None)
+        self.start_machine(machine_cls, self.ctx, *args, **kwargs)
+
         while self.cycle():
             pass
 
@@ -60,6 +69,8 @@ class MachineControl:
         except IndexError:
             return False
 
+        print('distributing %s' % (event))
+
         if event.typ in self.event_reactions:
             self.distribute_reactors(self.event_reactions[event.typ], event)
 
@@ -72,11 +83,14 @@ class MachineControl:
     def distribute_reactors(self, reactors, event):
         if event.destination is not None:
             if event.destination in reactors:
+                print('to %s' % (event.destination))
+
                 event.destination.inbox.append(
                     Event.with_state(event, reactors[event.destination]))
 
         else:
             for reactor, state in reactors.items():
+                print('to %s' % (reactor))
                 reactor.inbox.append(
                     Event.with_state(event, state))
 
@@ -94,7 +108,8 @@ class Event:
         self.state = None
 
     def __repr__(self):
-        return '<Event: ' + self.typ + ', ' + str(self.emitter) + '>'
+        return '<Event:typ=%s,emitter=%s,destination=%s>' % (
+            self.typ, self.emitter, self.destination)
 
     @classmethod
     def with_state(cls, event, state):
@@ -123,6 +138,21 @@ class StateMachine:
             new_state = self.listen
 
         self.current_state = new_state
+
+    def emit(self, typ, value=None):
+        self.emit_to(None, typ, value=value)
+
+    def emit_to(self, destination, typ, value=None):
+        self.ctl.emit(Event(typ, self, value=value, destination=destination))
+
+    def start_machine(self, machine_cls, *args, **kwargs):
+        return self.ctl.start_machine(machine_cls, self, *args, **kwargs)
+
+    def when_machine_emits(self, typ, machine, state):
+        self.ctl.add_machine_reaction(typ, machine, self, state)
+
+    def when(self, typ, state):
+        self.ctl.add_event_reaction(typ, self, state)
 
     def listen(self):
         print(str(self) + ' is listening')

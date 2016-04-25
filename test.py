@@ -1,51 +1,68 @@
-from simulator import MachineControl, Event, StateMachine
+from simulator import MachineControl, StateMachine
 
 
 class TestA(StateMachine):
-    def __init__(self, ctl, ctx):
+    def __init__(self, ctl, ctx, n):
         super().__init__(ctl, ctx)
 
-        self.init_state = self.a
+        self.init_state = self.init
+        self.n = n
 
-    def a(self):
-        print('A: a')
-        return self.b
+    def __repr__(self):
+        return '<A:n=%d>' % (self.n)
 
-    def b(self):
-        print('A: b')
-        self.m = TestB(self.ctl, self)
-        self.ctl.start(self.m)
+    def init(self):
+        self.ms = []
+        self.i = 0
+        return self.start_machines
 
-        self.ctl.add_machine_reaction('okay', self.m, self, self.c)
+    def start_machines(self):
+        if self.i < self.n:
+            m = self.start_machine(TestB, i=self.i)
+            self.ms.append(m)
+            self.when_machine_emits('done', m, self.m_done)
 
-    def c(self):
-        print('A: c')
-        self.ctl.emit(Event('test', self))
-        return self.b_halt
+            print('created machine %d' % (self.i + 1))
 
-    def b_halt(self):
-        print('A: going to halt after this')
-        return self.halt
+            self.i += 1
+            return self.start_machines
+
+        self.emit('run')
+
+    def m_done(self):
+        m = self.event.emitter
+
+        print('machine %d is done' % (self.event.value))
+
+        self.emit_to(m, 'halt', value=self.n)
+        self.ms.remove(m)
+        self.n = len(self.ms)
+
+        print('%d left to halt' % (self.n))
+
+        if self.n == 0:
+            return self.halt
 
 
 class TestB(StateMachine):
-    def __init__(self, ctl, ctx):
+    def __init__(self, ctl, ctx, i):
         super().__init__(ctl, ctx)
 
-        self.init_state = self.a
+        self.init_state = self.init
+        self.i = i
 
-    def a(self):
-        print('B: a')
-        self.ctl.add_event_reaction('test', self, self.b_halt)
-        self.ctl.emit(Event('okay', self, destination=self.ctx))
+    def __repr__(self):
+        return '<B:i=%d>' % (self.i)
 
-    def b_halt(self):
-        print('B: going to halt after this')
-        return self.halt
+    def init(self):
+        self.when('run', self.prnt)
+        self.when('halt', self.halt)
+
+    def prnt(self):
+        print('i am machine %d' % (self.i))
+        self.emit_to(self.ctx, 'done', value=self.i)
 
 
 if __name__ == '__main__':
     ctl = MachineControl()
-
-    ctl.start(TestA(ctl, None))
-    ctl.run()
+    ctl.run(TestA, 5)
