@@ -33,6 +33,12 @@ class MachineControl:
 
         self.event_reactions[typ][reactor] = state
 
+    def remove_event_reaction(self, typ, reactor):
+        try:
+            del self.event_reactions[typ][reactor]
+        except KeyError:
+            pass
+
     def add_machine_reaction(self, typ, emitter, reactor, state):
         index = (typ, emitter)
 
@@ -40,6 +46,14 @@ class MachineControl:
             self.machine_reactions[index] = {}
 
         self.machine_reactions[index][reactor] = state
+
+    def remove_machine_reaction(self, typ, emitter, reactor):
+        index = (typ, emitter)
+
+        try:
+            del self.machine_reactions[index][reactor]
+        except KeyError:
+            pass
 
     def emit(self, event):
         self.event_buss.append(event)
@@ -56,8 +70,7 @@ class MachineControl:
             pass
 
         if self.debug:
-            print('machines:')
-            print(self.machines)
+            print('machines: ' + str(self.machines))
 
         try:
             machine = self.machines.popleft()
@@ -78,31 +91,31 @@ class MachineControl:
         if self.debug:
             print('distributing %s' % (event))
 
-        if event.typ in self.event_reactions:
-            self.distribute_reactors(self.event_reactions[event.typ], event)
+        if (event.destination is not None
+                and event.destination in self.machines):
+            event.destination.inbox.append(event)
+            return True
 
-        index = (event.typ, event.emitter)
-        if index in self.machine_reactions:
-            self.distribute_reactors(self.machine_reactions[index], event)
+        for machine in self.machines:
+            machine.inbox.append(event)
 
         return True
 
-    def distribute_reactors(self, reactors, event):
-        if event.destination is not None:
-            if event.destination in reactors:
-                if self.debug:
-                    print('to %s' % (event.destination))
+    def filter_event(self, machine, event):
+        if event.typ in self.event_reactions:
+            try:
+                return self.event_reactions[event.typ][machine]
+            except KeyError:
+                pass
 
-                event.destination.inbox.append(
-                    Event.with_state(event, reactors[event.destination]))
+        index = (event.typ, event.emitter)
+        if index in self.machine_reactions:
+            try:
+                return self.machine_reactions[index][machine]
+            except KeyError:
+                pass
 
-        else:
-            for reactor, state in reactors.items():
-                if self.debug:
-                    print('to %s' % (reactor))
-
-                reactor.inbox.append(
-                    Event.with_state(event, state))
+        return None
 
     def halt(self, machine):
         self.machines.remove(machine)
@@ -124,6 +137,7 @@ class Event:
 
     @classmethod
     def with_state(cls, event, state):
+        # Probably depracated.
         event_prime = cls(event.typ, event.emitter, event.value,
                           event.destination, event.ack)
         event_prime.state = state
@@ -144,7 +158,7 @@ class StateMachine:
 
     def cycle(self):
         if self.ctl.debug:
-            print('cycling state %s' % (self.current_state))
+            print('cycling %s' % (self))
 
         new_state = self.current_state()
 
@@ -172,6 +186,39 @@ class StateMachine:
     def when(self, typ, state):
         self.ctl.add_event_reaction(typ, self, state)
 
+    def ignore_when_machine_emits(self, typ, machine):
+        self.ctl.remove_machine_reaction(typ, machine, self)
+
+        inbox_prime = queue()
+        while True:
+            try:
+                event = self.inbox.popleft()
+            except IndexError:
+                break
+
+            if event.typ != typ or event.emitter != machine:
+                inbox_prime.append(event)
+
+        self.inbox = inbox_prime
+
+    def ignore_when(self, typ):
+        self.ctl.remove_event_reaction(typ, self)
+
+        inbox_prime = queue()
+        while True:
+            try:
+                event = self.inbox.popleft()
+            except IndexError:
+                break
+
+            if event.typ != typ:
+                inbox_prime.append(event)
+
+        self.inbox = inbox_prime
+
+    def filter_event(self, event):
+        return self.ctl.filter_event(self, event)
+
     def listen(self):
         if self.ctl.debug:
             print(str(self) + ' is listening, inbox:')
@@ -182,14 +229,19 @@ class StateMachine:
         except IndexError:
             return
 
+        reaction = self.filter_event(self.event)
+
+        if reaction is None:
+            return
+
         if self.event.ack:
             self.emit_to(self.event.emitter, self.event.typ + '_ack',
                          value=self.event.value)
 
         if self.ctl.debug:
-            print('going to state ' + str(self.event.state))
+            print('going to state ' + reaction.__name__)
 
-        return self.event.state
+        return reaction
 
     def halt(self):
         if self.ctl.debug:
