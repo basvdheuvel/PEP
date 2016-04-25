@@ -3,7 +3,7 @@ from collections import deque as queue
 
 
 class MachineControl:
-    def __init__(self):
+    def __init__(self, debug=False):
         # Implementation choice: simple queued execution.
         self.machines = queue()
 
@@ -13,6 +13,8 @@ class MachineControl:
         self.event_buss = queue()
 
         self.ctx = None
+
+        self.debug = debug
 
     def start_machine(self, machine_cls, ctx, *args, **kwargs):
         machine = machine_cls(self, ctx, *args, **kwargs)
@@ -53,6 +55,10 @@ class MachineControl:
         while self.distribute_events():
             pass
 
+        if self.debug:
+            print('machines:')
+            print(self.machines)
+
         try:
             machine = self.machines.popleft()
         except IndexError:
@@ -69,7 +75,8 @@ class MachineControl:
         except IndexError:
             return False
 
-        print('distributing %s' % (event))
+        if self.debug:
+            print('distributing %s' % (event))
 
         if event.typ in self.event_reactions:
             self.distribute_reactors(self.event_reactions[event.typ], event)
@@ -83,14 +90,17 @@ class MachineControl:
     def distribute_reactors(self, reactors, event):
         if event.destination is not None:
             if event.destination in reactors:
-                print('to %s' % (event.destination))
+                if self.debug:
+                    print('to %s' % (event.destination))
 
                 event.destination.inbox.append(
                     Event.with_state(event, reactors[event.destination]))
 
         else:
             for reactor, state in reactors.items():
-                print('to %s' % (reactor))
+                if self.debug:
+                    print('to %s' % (reactor))
+
                 reactor.inbox.append(
                     Event.with_state(event, state))
 
@@ -99,22 +109,23 @@ class MachineControl:
 
 
 class Event:
-    def __init__(self, typ, emitter, value=None, destination=None):
+    def __init__(self, typ, emitter, value=None, destination=None, ack=False):
         self.typ = typ
         self.value = value
         self.emitter = emitter
         self.destination = destination
+        self.ack = ack
 
         self.state = None
 
     def __repr__(self):
-        return '<Event:typ=%s,emitter=%s,destination=%s>' % (
-            self.typ, self.emitter, self.destination)
+        return '<Event:typ=%s,emitter=%s,destination=%s,ack=%s>' % (
+            self.typ, self.emitter, self.destination, self.ack)
 
     @classmethod
     def with_state(cls, event, state):
         event_prime = cls(event.typ, event.emitter, event.value,
-                          event.destination)
+                          event.destination, event.ack)
         event_prime.state = state
         return event_prime
 
@@ -132,6 +143,9 @@ class StateMachine:
         self.init_state = self.halt
 
     def cycle(self):
+        if self.ctl.debug:
+            print('cycling state %s' % (self.current_state))
+
         new_state = self.current_state()
 
         if new_state is None:
@@ -142,8 +156,12 @@ class StateMachine:
     def emit(self, typ, value=None):
         self.emit_to(None, typ, value=value)
 
-    def emit_to(self, destination, typ, value=None):
-        self.ctl.emit(Event(typ, self, value=value, destination=destination))
+    def emit_to(self, destination, typ, value=None, ack_state=None):
+        self.ctl.emit(Event(typ, self, value=value, destination=destination,
+                            ack=ack_state is not None))
+
+        if ack_state is not None:
+            self.when_machine_emits(typ + '_ack', destination, ack_state)
 
     def start_machine(self, machine_cls, *args, **kwargs):
         return self.ctl.start_machine(machine_cls, self, *args, **kwargs)
@@ -155,18 +173,26 @@ class StateMachine:
         self.ctl.add_event_reaction(typ, self, state)
 
     def listen(self):
-        print(str(self) + ' is listening')
+        if self.ctl.debug:
+            print(str(self) + ' is listening, inbox:')
+            print(self.inbox)
 
         try:
             self.event = self.inbox.popleft()
         except IndexError:
             return
 
-        # TODO: This is where the ack mechanism goes
+        if self.event.ack:
+            self.emit_to(self.event.emitter, self.event.typ + '_ack',
+                         value=self.event.value)
+
+        if self.ctl.debug:
+            print('going to state ' + str(self.event.state))
 
         return self.event.state
 
     def halt(self):
-        print(str(self) + ' is halting')
+        if self.ctl.debug:
+            print(str(self) + ' is halting')
 
         self.ctl.halt(self)
