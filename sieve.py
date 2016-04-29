@@ -24,7 +24,7 @@ class Sieve(StateMachine):
         self.when_machine_emits('pass', self.manager, self.prime)
         self.when_machine_emits('fail', self.manager, self.increment)
 
-        self.when_machine_emits('ready', self.manager, self.prime)
+        return self.prime
 
     def prime(self):
         self.n -= 1
@@ -64,8 +64,6 @@ class PickerManager(StateMachine):
         self.when_machine_emits('new_x', self.ctx, self.new_x)
 
         self.when('halt', self.halt)
-
-        self.emit_to(self.ctx, 'ready')
 
     def new_prime(self):
         self.pickers.append(self.start_machine(Picker, self.event.value))

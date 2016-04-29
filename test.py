@@ -19,9 +19,8 @@ class TestA(StateMachine):
 
     def start_machines(self):
         if self.i < self.n:
-            m = self.start_machine(TestB, i=self.i)
+            m = self.start_machine(TestB, i=self.i + 1)
             self.ms.append(m)
-            self.when_machine_emits('ready', m, self.m_ready)
             self.when_machine_emits('done', m, self.m_done)
 
             print('created machine %d' % (self.i + 1))
@@ -29,14 +28,7 @@ class TestA(StateMachine):
             self.i += 1
             return self.start_machines
 
-    def m_ready(self):
-        m = self.event.emitter
-
-        print('machine %d is ready' % (m.i + 1))
-
-        self.j += 1
-        if self.j == self.n:
-            self.emit('run')
+        self.emit('run')
 
     def m_done(self):
         m = self.event.emitter
@@ -66,8 +58,6 @@ class TestB(StateMachine):
     def init(self):
         self.when('run', self.prnt)
         self.when('halt', self.halt)
-
-        self.emit_to(self.ctx, 'ready')
 
     def prnt(self):
         print('i am machine %d' % (self.i))
