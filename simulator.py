@@ -248,4 +248,5 @@ class StateMachine:
         if self.ctl.debug:
             print(str(self) + ' is halting')
 
+        self.emit('halt')
         self.ctl.halt(self)
