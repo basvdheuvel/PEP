@@ -21,7 +21,7 @@ class MachineControl:
 
         self.machines.append(machine)
 
-        self.add_event_reaction('start', machine, machine.init_state)
+        self.add_machine_reaction('start', ctx, machine, machine.init_state)
         self.add_machine_reaction('halt', ctx, machine, machine.halt)
 
         self.emit(Event('start', ctx, destination=machine))
@@ -98,6 +98,8 @@ class MachineControl:
             return True
 
         for machine in self.machines:
+            if machine == event.emitter:
+                continue
             machine.inbox.append(event)
 
         return True
