@@ -22,6 +22,7 @@ class MachineControl:
         self.machines.append(machine)
 
         self.add_event_reaction('start', machine, machine.init_state)
+        self.add_machine_reaction('halt', ctx, machine, machine.halt)
 
         self.emit(Event('start', ctx, destination=machine))
 
