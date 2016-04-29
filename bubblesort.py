@@ -54,8 +54,6 @@ class BubbleSort(StateMachine):
 
         print('Done: %s' % (str(self.a)))
 
-        self.emit('halt')
-
         return self.halt
 
 
@@ -87,3 +85,4 @@ class Swapper(StateMachine):
 if __name__ == '__main__':
     ctl = MachineControl(debug=False)
     ctl.run(BubbleSort, [5, 4, 3, 2, 3, 4, 5, 67, 1, 1, 6, 9])
+    ctl.run(BubbleSort, list("test with string"))

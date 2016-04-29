@@ -32,7 +32,6 @@ class Sieve(StateMachine):
         print('FOUND PRIME %d, %d left' % (self.x, self.n))
 
         if self.n == 0:
-            self.emit('halt')
             return self.halt
 
         self.emit_to(self.manager, 'new_prime', value=self.x)
@@ -62,8 +61,6 @@ class PickerManager(StateMachine):
     def setup(self):
         self.when_machine_emits('new_prime', self.ctx, self.new_prime)
         self.when_machine_emits('new_x', self.ctx, self.new_x)
-
-        self.when('halt', self.halt)
 
     def new_prime(self):
         self.pickers.append(self.start_machine(Picker, self.event.value))
@@ -125,7 +122,6 @@ class Picker(StateMachine):
 
     def setup(self):
         self.when('run', self.run)
-        self.when('halt', self.halt)
 
     def run(self):
         self.count += 1
@@ -140,4 +136,4 @@ class Picker(StateMachine):
 
 if __name__ == '__main__':
     ctl = MachineControl(debug=False)
-    ctl.run(Sieve, 1000)
+    ctl.run(Sieve, 10)
