@@ -38,7 +38,7 @@ class BubbleSort(StateMachine):
 
     def swap(self):
         if self.i < len(self.swappers):
-            self.emit_to(self.swappers[self.i], 'start')
+            self.emit_to(self.swappers[self.i], 'swap')
             self.i += 1
             return self.listen
 
@@ -64,11 +64,14 @@ class Swapper(StateMachine):
         self.a = a
         self.i = i
 
-        self.init_state = self.swap
+        self.init_state = self.setup
 
     def __repr__(self):
         return '<Swapper:i=%d,state=%s>' % (self.i,
                                             self.current_state.__name__)
+
+    def setup(self):
+        self.when_machine_emits('swap', self.ctx, self.swap)
 
     def swap(self):
         if self.a[self.i - 1] > self.a[self.i]:
@@ -84,5 +87,7 @@ class Swapper(StateMachine):
 
 if __name__ == '__main__':
     ctl = MachineControl(debug=False)
+    ctl.run(BubbleSort, [5, 3, 1, 8])
     ctl.run(BubbleSort, [5, 4, 3, 2, 3, 4, 5, 67, 1, 1, 6, 9])
     ctl.run(BubbleSort, list("test with string"))
+    ctl.run(BubbleSort, list('zpykxcerndu'))
