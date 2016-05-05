@@ -245,7 +245,21 @@ class MachineControl:
 
 
 class Event:
+    """An event for interaction between state machines."""
+
     def __init__(self, typ, emitter, value=None, destination=None, ack=False):
+        """Initialize the event.
+
+        Arguments:
+        typ -- the event's type string
+        emitter -- the machine emitting the event
+
+        Keyword arguments:
+        value -- value to transmit (default None)
+        destination -- the machine the event should end up with (default None)
+        ack -- whether the receiving machine should emit an acknowledgement
+            (default False)
+        """
         self.typ = typ
         self.value = value
         self.emitter = emitter
