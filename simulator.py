@@ -258,14 +258,6 @@ class Event:
         return '<Event:typ=%s,emitter=%s,destination=%s,ack=%s>' % (
             self.typ, self.emitter, self.destination, self.ack)
 
-    @classmethod
-    def with_state(cls, event, state):
-        # Probably depracated.
-        event_prime = cls(event.typ, event.emitter, event.value,
-                          event.destination, event.ack)
-        event_prime.state = state
-        return event_prime
-
 
 class StateMachine:
     def __init__(self, ctl, ctx):
