@@ -92,9 +92,9 @@ class MachineControl:
         if self.debug:
             print('distributing %s' % (event))
 
-        if (event.destination is not None
-                and event.destination in self.machines):
-            event.destination.inbox.append(event)
+        if event.destination is not None:
+            if event.destination in self.machines:
+                event.destination.inbox.append(event)
             return True
 
         for machine in self.machines:
