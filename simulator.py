@@ -275,7 +275,34 @@ class Event:
 
 
 class StateMachine:
+    """Represent a state machine.
+
+    To create purely event-driven programs, one can subclass this class. The
+    `__init__` method should be extended with local variables and an initial
+    state, but first call `super().__init__()` to prepare the machine.
+
+    States can be implemented by adding methods to the class. The initial state
+    can be indicated by setting `self.init_state` to the preferred state method
+    in `__init__`. Loops are not impossible, but should not be used as they do
+    not exist in the language proposed by this thesis.
+
+    Do not override `listen` and `halt`, this will break the simulator.
+    However, referring to both states is no problem (and usually necessary).
+
+    The current event can be referred to through `self.event`. Do not mutate
+    this variable.
+    """
+
     def __init__(self, ctl, ctx):
+        """Initialize the state machine.
+
+        Prepares the machine for execution and prepares event processing
+        necessities.
+
+        Arguments:
+        ctl -- a MachineControl instance
+        ctx -- the machine's context, a StateMachine
+        """
         self.ctl = ctl
         self.ctx = ctx
 
@@ -287,6 +314,10 @@ class StateMachine:
         self.init_state = self.halt
 
     def cycle(self):
+        """Run the current state and determine the next.
+
+        If no next state is obtained, the new state will be 'listen`.
+        """
         if self.ctl.debug:
             print('cycling %s' % (self))
 
@@ -298,9 +329,31 @@ class StateMachine:
         self.current_state = new_state
 
     def emit(self, typ, value=None):
+        """Emit an event.
+
+        Arguments:
+        typ -- the event's type string
+
+        Keyword arguments:
+        value -- value to transmit with the event (default None)
+        """
         self.emit_to(None, typ, value=value)
 
     def emit_to(self, destination, typ, value=None, ack_state=None):
+        """Emit an event to a machine.
+
+        Arguments:
+        destination -- the StateMachine to send the event to
+        typ -- the event's type string
+
+        Keyword arguments:
+        value -- value to transmit with the event (default None)
+        ack_state -- a state for acknowledgement, a method
+
+        If `ack_state` is given, the receiving machine will send an
+        acknowledgement event. When the emitting machine recieves this event,
+        it will transition to the given state.
+        """
         self.ctl.emit(Event(typ, self, value=value, destination=destination,
                             ack=ack_state is not None))
 
@@ -308,15 +361,43 @@ class StateMachine:
             self.when_machine_emits(typ + '_ack', destination, ack_state)
 
     def start_machine(self, machine_cls, *args, **kwargs):
+        """Instantiate and start a machine.
+
+        Arguments:
+        machine_cls -- a StateMachine subclass
+        *args/**kwargs -- any arguments the state machine takes
+        """
         return self.ctl.start_machine(machine_cls, self, *args, **kwargs)
 
     def when_machine_emits(self, typ, machine, state):
+        """Add a machine event reaction.
+
+        Arguments:
+        typ -- the event's type string
+        machine -- the emitting StateMachine
+        state -- the state to transition to, a method
+        """
         self.ctl.add_machine_reaction(typ, machine, self, state)
 
     def when(self, typ, state):
+        """Add an event reaction.
+
+        Arguments:
+        typ -- the event's type string
+        state -- the state to transition to, a method
+        """
         self.ctl.add_event_reaction(typ, self, state)
 
     def ignore_when_machine_emits(self, typ, machine):
+        """Remove a machine event reaction.
+
+        Besides ignoring further such events, all events from the given machine
+        and of the given type in the machine's inbox are removed.
+
+        Arguments:
+        typ -- the event's type string
+        machine -- the event's emitting StateMachine
+        """
         self.ctl.remove_machine_reaction(typ, machine, self)
 
         inbox_prime = queue()
@@ -332,6 +413,14 @@ class StateMachine:
         self.inbox = inbox_prime
 
     def ignore_when(self, typ):
+        """Remove an event reaction.
+
+        Besides ignoring further such events, all events from the given machine
+        and of the given type in the machine's inbox are removed.
+
+        Arguments:
+        type -- the event's type string
+        """
         self.ctl.remove_event_reaction(typ, self)
 
         inbox_prime = queue()
@@ -347,9 +436,21 @@ class StateMachine:
         self.inbox = inbox_prime
 
     def filter_event(self, event):
+        """Return a state if a reaction to the event exists.
+
+        Arguments:
+        event -- the Event
+        """
         return self.ctl.filter_event(self, event)
 
     def listen(self):
+        """Listen state for all machines.
+
+        Do not extend or override this method.
+
+        Checks the event inbox for any events and possible reactions. If an
+        acknowledgement is required, this is sent.
+        """
         if self.ctl.debug:
             print(str(self) + ' is listening, inbox:')
             print(self.inbox)
@@ -374,6 +475,13 @@ class StateMachine:
         return reaction
 
     def halt(self):
+        """Halt state for all machines.
+
+        Do not extend or override this method.
+
+        First emits `halt', which halts all child machines. Then MachineControl
+        is told to halt the machine.
+        """
         if self.ctl.debug:
             print(str(self) + ' is halting')
 
