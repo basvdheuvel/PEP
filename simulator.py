@@ -86,8 +86,8 @@ class MachineControl:
 
         Arguments:
         typ -- the event's type string
-        reactor -- the machine that should react
-        state -- the state the machine should transition to
+        reactor -- the StateMachine that should react
+        state -- the state the machine should transition to, a method
         """
         if typ not in self.event_reactions:
             self.event_reactions[typ] = {}
@@ -99,7 +99,7 @@ class MachineControl:
 
         Arguments:
         typ -- the event's type string
-        reactor -- the machine that should ignore the event
+        reactor -- the StateMachine that should ignore the event
         """
         try:
             del self.event_reactions[typ][reactor]
@@ -111,9 +111,9 @@ class MachineControl:
 
         Arguments:
         typ -- the event's type string
-        emitter -- the event's emitting state machine
-        reactor -- the machine that should react
-        state -- the state the machine should transition to
+        emitter -- the event's emitting StateMachine
+        reactor -- the StateMachine that should react
+        state -- the state the machine should transition to, a method
         """
         index = (typ, emitter)
 
@@ -127,8 +127,8 @@ class MachineControl:
 
         Arguments:
         typ -- the event's type string
-        emitter -- the event's emitting state machine
-        reactor -- the machine that should ignore the event
+        emitter -- the event's emitting StateMachine
+        reactor -- the StateMachine that should ignore the event
         """
         index = (typ, emitter)
 
@@ -141,7 +141,7 @@ class MachineControl:
         """Add an event to the event buss.
 
         Arguments:
-        event -- an event
+        event -- the to be emitted Event
         """
         self.event_buss.append(event)
 
@@ -221,8 +221,8 @@ class MachineControl:
         Otherwise, None is returned.
 
         Arguments:
-        machine -- the reacting state machine
-        event -- the event to be checked
+        machine -- the reacting state machine, a StateMachine
+        event -- the event to be checked, an Event
         """
         if event.typ in self.event_reactions:
             try:
@@ -252,11 +252,12 @@ class Event:
 
         Arguments:
         typ -- the event's type string
-        emitter -- the machine emitting the event
+        emitter -- the StateMachine emitting the event
 
         Keyword arguments:
         value -- value to transmit (default None)
-        destination -- the machine the event should end up with (default None)
+        destination -- the StateMachine the event should end up with
+            (default None)
         ack -- whether the receiving machine should emit an acknowledgement
             (default False)
         """
