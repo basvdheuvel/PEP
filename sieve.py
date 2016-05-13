@@ -10,6 +10,11 @@ class Sieve(StateMachine):
         self.x = 2
         self.manager = None
 
+        self.info = [
+            ('n:%d', 'n'),
+            ('x:%d', 'x'),
+        ]
+
         self.init_state = self.setup
 
     def __repr__(self):
@@ -112,8 +117,13 @@ class Picker(StateMachine):
         super().__init__(ctl, ctx)
 
         self.x = x
-
         self.count = 0
+
+        self.info = [
+            ('x:%d', 'x'),
+            ('count:%d', 'count'),
+        ]
+
         self.init_state = self.setup
 
     def __repr__(self):
@@ -135,5 +145,5 @@ class Picker(StateMachine):
 
 
 if __name__ == '__main__':
-    ctl = MachineControl(debug=False)
+    ctl = MachineControl(debug=True)
     ctl.run(Sieve, 10)

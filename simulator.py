@@ -56,6 +56,7 @@ class MachineControl:
         self.ctx = None
 
         self.debug = debug
+        self.react_event = None
 
     def start_machine(self, machine_cls, ctx, *args, **kwargs):
         """Start a state machine.
@@ -170,16 +171,29 @@ class MachineControl:
         while self.distribute_events():
             pass
 
-        if self.debug:
-            print('machines: ' + str(self.machines))
-
         try:
             machine = self.machines.popleft()
         except IndexError:
             return False
 
         self.machines.append(machine)
+
+        c_state = machine.current_state
+
+        if self.debug:
+            print(type(machine).__name__)
+            print('State:', c_state.__name__)
+            print('Vars:', machine.var_str())
+
         machine.cycle()
+
+        n_state = machine.current_state
+
+        if self.debug:
+            if c_state.__name__ == 'listen' and self.react_event is not None:
+                print('Event:', self.react_event)
+            print('=>', n_state.__name__)
+            print()
 
         return True
 
@@ -198,9 +212,6 @@ class MachineControl:
             event = self.event_buss.popleft()
         except IndexError:
             return False
-
-        if self.debug:
-            print('distributing %s' % (event))
 
         if event.destination is not None:
             if event.destination in self.machines:
@@ -313,14 +324,23 @@ class StateMachine:
 
         self.init_state = self.halt
 
+        self.info = []
+
+    def var_str(self):
+        """Create a string of formatted variables.
+
+        `self.info` should contain a list of tuples with a format string and
+        the name of a variable. This method aggregates them into a
+        comma-separated string containing these formatted values.
+        """
+        values = [inf[0] % (getattr(self, inf[1])) for inf in self.info]
+        return ', '.join(values)
+
     def cycle(self):
         """Run the current state and determine the next.
 
         If no next state is obtained, the new state will be 'listen`.
         """
-        if self.ctl.debug:
-            print('cycling %s' % (self))
-
         new_state = self.current_state()
 
         if new_state is None:
@@ -451,26 +471,23 @@ class StateMachine:
         Checks the event inbox for any events and possible reactions. If an
         acknowledgement is required, this is sent.
         """
-        if self.ctl.debug:
-            print(str(self) + ' is listening, inbox:')
-            print(self.inbox)
-
         try:
             self.event = self.inbox.popleft()
         except IndexError:
+            self.ctl.react_event = None
             return
 
         reaction = self.filter_event(self.event)
 
         if reaction is None:
+            self.ctl.react_event = None
             return
+
+        self.ctl.react_event = self.event
 
         if self.event.ack:
             self.emit_to(self.event.emitter, self.event.typ + '_ack',
                          value=self.event.value)
-
-        if self.ctl.debug:
-            print('going to state ' + reaction.__name__)
 
         return reaction
 
@@ -482,8 +499,5 @@ class StateMachine:
         First emits `halt', which halts all child machines. Then MachineControl
         is told to halt the machine.
         """
-        if self.ctl.debug:
-            print(str(self) + ' is halting')
-
         self.emit('halt')
         self.ctl.halt(self)
