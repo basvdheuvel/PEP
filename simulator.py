@@ -192,7 +192,8 @@ class MachineControl:
         if self.debug:
             if c_state.__name__ == 'listen' and self.react_event is not None:
                 print('Event:', self.react_event)
-            print('=>', n_state.__name__)
+            if n_state is not None:
+                print('=>', n_state.__name__)
             print()
 
         return True
@@ -343,7 +344,9 @@ class StateMachine:
         """
         new_state = self.current_state()
 
-        if new_state is None:
+        if self.current_state.__name__ == 'halt':
+            new_state = self.current_state
+        elif new_state is None:
             new_state = self.listen
 
         self.current_state = new_state
