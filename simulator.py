@@ -32,7 +32,7 @@ class MachineControl:
     machines.
     """
 
-    def __init__(self, debug=False):
+    def __init__(self, debug=False, step=False):
         """Initialize a machine control.
 
         It setups up a machine list, which in this implementation is a queue.
@@ -45,6 +45,7 @@ class MachineControl:
         Keyword arguments:
         debug -- prints state machine and event buss information if True
             (default True)
+        step -- allows one to cycle stepwise (default False)
         """
         self.machines = queue()
 
@@ -57,6 +58,7 @@ class MachineControl:
 
         self.debug = debug
         self.react_event = None
+        self.step = step
 
     def start_machine(self, machine_cls, ctx, *args, **kwargs):
         """Start a state machine.
@@ -144,6 +146,9 @@ class MachineControl:
         Arguments:
         event -- the to be emitted Event
         """
+        if self.debug:
+            print('Emitting event:', event)
+
         self.event_buss.append(event)
 
     def run(self, machine_cls, *args, **kwargs):
@@ -160,7 +165,8 @@ class MachineControl:
         self.start_machine(machine_cls, self.ctx, *args, **kwargs)
 
         while self.cycle():
-            pass
+            if self.step:
+                input('Press enter to step...')
 
     def cycle(self):
         """Distribute events, cycle a machine and return whether any are left.
