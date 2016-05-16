@@ -12,6 +12,10 @@ class BubbleSort(StateMachine):
         self.max_changed = 0
         self.changed = False
 
+        self.info = [
+            ('a:%s', 'a'),
+        ]
+
         self.init_state = self.setup
 
     def __repr__(self):
@@ -60,7 +64,7 @@ class BubbleSort(StateMachine):
         return self.halt
 
     def setup_optimize(self):
-        self.i = len(self.swappers) - self.max_changed - 1
+        self.i = len(self.swappers) - self.max_changed + 1
         return self.optimize
 
     def optimize(self):
@@ -79,6 +83,10 @@ class Swapper(StateMachine):
 
         self.a = a
         self.i = i
+
+        self.info = [
+            ('i:%d', 'i'),
+        ]
 
         self.init_state = self.setup
 
@@ -102,7 +110,7 @@ class Swapper(StateMachine):
 
 
 if __name__ == '__main__':
-    ctl = MachineControl(debug=False)
+    ctl = MachineControl(debug=True)
     ctl.run(BubbleSort, [5, 3, 1, 8])
     ctl.run(BubbleSort, [5, 4, 3, 2, 3, 4, 5, 67, 1, 1, 6, 9])
     ctl.run(BubbleSort, list("test with string"))
