@@ -15,6 +15,8 @@ StateMachine -- superclass for all possible state machines
 """
 from collections import deque as queue
 
+from debug_window import DebugWindow
+
 
 class MachineControl:
     """Manage and schedule state machines and events.
@@ -43,8 +45,8 @@ class MachineControl:
         started.
 
         Keyword arguments:
-        debug -- prints state machine and event buss information if True
-            (default True)
+        debug -- opens a window for each state machine showing state and event
+            information if True (default True)
         step -- allows one to cycle stepwise (default False)
         """
         self.machines = queue()
@@ -60,6 +62,9 @@ class MachineControl:
         self.react_event = None
         self.step = step
 
+        if debug:
+            self.debug_windows = {}
+
     def start_machine(self, machine_cls, ctx, *args, **kwargs):
         """Start a state machine.
 
@@ -68,12 +73,19 @@ class MachineControl:
         machine, the `start' and the `halt' events. Finally, a `start' event is
         emitted to the newly created machine.
 
+        If debugging is turned on, this also starts a debug window, able to
+        show state and event information.
+
         Arguments:
         machine_cls -- a StateMachine subclass
         ctx -- the state machine that starts this new machine
         *args/**kwargs -- any arguments the state machine takes
         """
         machine = machine_cls(self, ctx, *args, **kwargs)
+
+        if self.debug:
+            self.debug_windows[machine] = DebugWindow(
+                title=machine_cls.__name__)
 
         self.machines.append(machine)
 
@@ -143,11 +155,20 @@ class MachineControl:
     def emit(self, event):
         """Add an event to the event buss.
 
+        If debugging is on, the event is displayed in the emitter's debug
+        window.
+
         Arguments:
         event -- the to be emitted Event
         """
         if self.debug:
-            print('Emitting event:', event)
+            try:
+                self.debug_windows[event.emitter].write(
+                    'Emitting %s' % (event))
+            except KeyError:
+                # This only happens with the first machine, context, for which
+                # no debug window is created.
+                ...
 
         self.event_buss.append(event)
 
@@ -173,6 +194,11 @@ class MachineControl:
 
         When the machine queue is empty, False is returned. Otherwise, True is
         returned.
+
+        If debuggin is on, the cycles machine's state before and after the
+        cycle is shown in the machine's debuggin window, accompanied by any
+        variables indicated in the machine. If these variables have changed
+        after the cycle, the changed values are shown as well.
         """
         while self.distribute_events():
             pass
@@ -187,20 +213,14 @@ class MachineControl:
         c_state = machine.current_state
 
         if self.debug:
-            print(type(machine).__name__)
-            print('State:', c_state.__name__)
-            print('Vars:', machine.var_str())
+            var_str = self.debug_precycle(machine)
 
         machine.cycle()
 
         n_state = machine.current_state
 
         if self.debug:
-            if c_state.__name__ == 'listen' and self.react_event is not None:
-                print('Event:', self.react_event)
-            if n_state is not None:
-                print('=>', n_state.__name__)
-            print()
+            self.debug_aftercycle(machine, c_state, n_state, var_str)
 
         return True
 
@@ -258,8 +278,73 @@ class MachineControl:
         return None
 
     def halt(self, machine):
-        """Halt a machine."""
+        """Halt a machine.
+
+        If debuggin is on, the machine's debuggin window's title is altered to
+        include `HALTED' and the window's stdin pipe is closed.
+        """
+        if self.debug:
+            debug_window = self.debug_windows[machine]
+            debug_window.set_title('HALTED %s' % (type(machine).__name__))
+            debug_window.close()
+
         self.machines.remove(machine)
+
+    def debug_precycle(self, machine):
+        """Send info to a machine's debug window before a cycle.
+
+        First the machine's current state is show. After this, if the machine
+        has indicitated any variables as information, these are shown as well.
+
+        Arguments:
+        machine -- the StateMachine to show debug information for
+        """
+        debug_window = self.debug_windows[machine]
+        debug_window.write('State: %s' % (machine.current_state.__name__))
+
+        var_str = machine.var_str()
+        if var_str != '':
+            debug_window.write('Vars: %s' % (var_str))
+
+        return var_str
+
+    def debug_aftercycle(self, machine, p_state, n_state, p_var_str):
+        """Send info to a machine's debug window after a cycle.
+
+        First the machine's variables are compared to its variables before the
+        cycle. If they are changed, they are displayed. If the machine was in
+        its listen state and reacted to an event, this event is displayed.
+        Finally, if the cycle resulted in a state transition, the new state is
+        displayed.
+
+        If the machine cycled its halt state, nothing is to be done.
+
+        Arguments:
+        machine -- the StateMachine to show debug information for
+        p_state -- the machine's state before the cycle
+        n_state -- the machine's state after the cycle
+        p_var_str -- the machine's variable string before the cycle
+        """
+        if p_state.__name__ == 'halt':
+            return
+
+        debug_window = self.debug_windows[machine]
+
+        var_str = machine.var_str()
+        if var_str != '' and var_str != p_var_str:
+            if p_var_str == '':
+                s = 'Vars'
+            else:
+                s = '  '
+            debug_window.write('%s -> %s' % (s, var_str))
+
+        if p_state.__name__ == 'listen' and self.react_event is not None:
+            debug_window.write(str(self.react_event))
+
+        if n_state is not None:
+            debug_window.write('=> %s' % (n_state.__name__))
+
+        debug_window.write('')
 
 
 class Event:
