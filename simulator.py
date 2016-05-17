@@ -299,10 +299,24 @@ class MachineControl:
     def reset(self):
         """Reset machine control.
 
-        This prepares it for a next run.
+        This prepares it for a next run. Python garbage collects itself, but in
+        an actual implementation, all these fields need to be emptied
+        carefully.
         """
-        # TODO: reset everything.
+        self.machines.clear()
+
+        self.event_reactions = {}
+        self.machine_reactions = {}
+
+        self.event_buss.clear()
+
+        self.ctx = None
+
+        self.react_event = None
         self.event_n = 0
+
+        if self.debug:
+            self.debug_windows = {}
 
     def debug_precycle(self, machine):
         """Send info to a machine's debug window before a cycle.
