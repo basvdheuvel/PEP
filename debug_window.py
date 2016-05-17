@@ -141,7 +141,12 @@ class Window(tk.Tk):
 def make_nonblocking(fh):
     """Make a file nonblocking.
 
-    TODO: Figure out how this actually works and explain.
+    fcntl is a C system call, used to modify file descriptors. The operation
+    used (F_SETFL) sets the file descriptor's flags.
+
+    The argument to this function call uses F_GETFL, which gets the currently
+    set flags. These are combined with a new flag: O_NONBLOCK. This flag makes
+    sure no calls to the file cause the process to wait, i.e. nonblocking.
     """
     if hasattr(fh, 'fileno'):
         fh = fh.fileno()
