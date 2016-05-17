@@ -97,7 +97,7 @@ class Window(tk.Tk):
         self.after(1, self.do_read)
 
     def do_read(self):
-        """Try to read a file from stdin."""
+        """Try to read a line from stdin."""
         line = sys.stdin.readline()
 
         if line is not None and line != '':
