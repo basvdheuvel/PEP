@@ -61,6 +61,7 @@ class MachineControl:
         self.debug = debug
         self.react_event = None
         self.step = step
+        self.event_n = 0
 
         if debug:
             self.debug_windows = {}
@@ -161,6 +162,9 @@ class MachineControl:
         Arguments:
         event -- the to be emitted Event
         """
+        self.event_n += 1
+        event.n = self.event_n
+
         if self.debug:
             try:
                 self.debug_windows[event.emitter].write(
@@ -188,6 +192,8 @@ class MachineControl:
         while self.cycle():
             if self.step:
                 input('Press enter to step...')
+
+        self.reset()
 
     def cycle(self):
         """Distribute events, cycle a machine and return whether any are left.
@@ -290,6 +296,14 @@ class MachineControl:
 
         self.machines.remove(machine)
 
+    def reset(self):
+        """Reset machine control.
+
+        This prepares it for a next run.
+        """
+        # TODO: reset everything.
+        self.event_n = 0
+
     def debug_precycle(self, machine):
         """Send info to a machine's debug window before a cycle.
 
@@ -372,9 +386,11 @@ class Event:
 
         self.state = None
 
+        self.n = -1
+
     def __repr__(self):
-        return '<Event:typ=%s,emitter=%s,destination=%s,ack=%s>' % (
-            self.typ, self.emitter, self.destination, self.ack)
+        return '<Ev(%d):typ=%s,emitter=%s,destination=%s,ack=%s>' % (
+            self.n, self.typ, self.emitter, self.destination, self.ack)
 
 
 class StateMachine:
