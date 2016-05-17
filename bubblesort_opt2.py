@@ -112,6 +112,9 @@ class Swapper(StateMachine):
 if __name__ == '__main__':
     ctl = MachineControl(debug=True)
     ctl.run(BubbleSort, [5, 3, 1, 8])
+    input('Press enter to sort the next list')
     ctl.run(BubbleSort, [5, 4, 3, 2, 3, 4, 5, 67, 1, 1, 6, 9])
+    input('Press enter to sort the next list')
     ctl.run(BubbleSort, list("test with string"))
+    input('Press enter to sort the next list')
     ctl.run(BubbleSort, list('zpykxcerndu'))
