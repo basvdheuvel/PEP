@@ -4,6 +4,7 @@ import sys
 import fcntl
 import os
 import subprocess
+import signal
 
 
 class DebugWindow:
@@ -151,6 +152,10 @@ def make_nonblocking(fh):
 def main():
     """Make stdin nonblocking and open a window."""
     make_nonblocking(sys.stdin)
+
+    # Prevent Ctrl-C from shutting down the window, let the window manager do
+    # this.
+    signal.signal(signal.SIGINT, lambda sig, frame: ...)
 
     app = Window()
     app.mainloop()
