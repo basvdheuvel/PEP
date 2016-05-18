@@ -31,15 +31,11 @@ class TestA(StateMachine):
         self.emit('run')
 
     def m_done(self):
-        m = self.event.emitter
-
         print('machine %d is done' % (self.event.value))
 
-        self.emit_to(m, 'halt', value=self.n)
-        self.ms.remove(m)
-        self.n = len(self.ms)
+        self.n -= 1
 
-        print('%d left to halt' % (self.n))
+        print('%d left to be done' % (self.n))
 
         if self.n == 0:
             return self.halt
@@ -57,7 +53,6 @@ class TestB(StateMachine):
 
     def init(self):
         self.when('run', self.prnt)
-        self.when('halt', self.halt)
 
     def prnt(self):
         print('i am machine %d' % (self.i))
@@ -65,5 +60,5 @@ class TestB(StateMachine):
 
 
 if __name__ == '__main__':
-    ctl = MachineControl(debug=False)
-    ctl.run(TestA, 5)
+    ctl = MachineControl(debug=True, step=True)
+    ctl.run(TestA, 2)
