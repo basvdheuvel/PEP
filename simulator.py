@@ -83,6 +83,7 @@ class MachineControl:
         *args/**kwargs -- any arguments the state machine takes
         """
         machine = machine_cls(self, ctx, *args, **kwargs)
+        machine.current_state = machine.init_state
 
         if self.debug:
             self.debug_windows[machine] = DebugWindow(
@@ -90,10 +91,7 @@ class MachineControl:
 
         self.machines.append(machine)
 
-        self.add_machine_reaction('start', ctx, machine, machine.init_state)
         self.add_machine_reaction('halt', ctx, machine, machine.halt)
-
-        self.emit(Event('start', ctx, destination=machine))
 
         return machine
 
@@ -438,8 +436,6 @@ class StateMachine:
         """
         self.ctl = ctl
         self.ctx = ctx
-
-        self.current_state = self.listen
 
         self.inbox = queue()
         self.event = None
