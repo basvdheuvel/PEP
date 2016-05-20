@@ -262,20 +262,23 @@ class MachineControl:
         If a reaction exists, the machine's reaction state is returned.
         Otherwise, None is returned.
 
+        First machine reactions is checked, because such reactions are more
+        specific and thus have priority.
+
         Arguments:
         machine -- the reacting state machine, a StateMachine
         event -- the event to be checked, an Event
         """
-        if event.typ in self.event_reactions:
-            try:
-                return self.event_reactions[event.typ][machine]
-            except KeyError:
-                pass
-
         index = (event.typ, event.emitter)
         if index in self.machine_reactions:
             try:
                 return self.machine_reactions[index][machine]
+            except KeyError:
+                pass
+
+        if event.typ in self.event_reactions:
+            try:
+                return self.event_reactions[event.typ][machine]
             except KeyError:
                 pass
 
