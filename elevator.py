@@ -1,7 +1,6 @@
 from simulator import MachineControl, StateMachine
 from random import randint
-
-# TODO: Fix "turning problem"
+import datetime as dt
 
 
 class Elevator(StateMachine):
@@ -16,16 +15,24 @@ class Elevator(StateMachine):
         self.goals = []
         self.position = 0
 
+        self.lift_is_open = False
+
         self.i = 0
 
         self.key_machine = None
+        self.key_class = ElevatorKeys
         self.caret_machine = None
+        self.caret_class = ElevatorCaret
+
+        self.open_t = dt.timedelta(milliseconds=1500)
+
+        self.timer_end = None
 
         self.init_state = self.setup
 
     def setup(self):
-        self.key_machine = self.start_machine(ElevatorKeys, self.n)
-        self.caret_machine = self.start_machine(ElevatorCaret)
+        self.key_machine = self.start_machine(self.key_class, self.n)
+        self.caret_machine = self.start_machine(self.caret_class)
 
         self.when_machine_emits('press', self.key_machine, self.press)
         self.when_machine_emits('reached', self.caret_machine, self.reached)
@@ -40,6 +47,8 @@ class Elevator(StateMachine):
 
     def press(self):
         goal = self.event.value
+        print('%d pressed' % (goal))
+
         self.goals[goal] = True
 
         if goal > self.position and (self.up_goal is None
@@ -49,23 +58,25 @@ class Elevator(StateMachine):
                                        or goal < self.down_goal):
             self.down_goal = goal
 
-        print('Current goals', [i for i, g in enumerate(self.goals)
-                                if g])
+        # print('Current goals', [i for i, g in enumerate(self.goals)
+        #                         if g])
 
-        if self.moving == 0 and (self.up_goal is not None
-                                 or self.down_goal is not None):
-            return self.not_moving
+        if self.moving == 0:
+            if self.up_goal is not None or self.down_goal is not None:
+                return self.not_moving
+
+            return self.open_doors
 
     def not_moving(self):
         if self.up_goal is not None:
             self.moving = 1
-            print('Lift moving up')
+            # print('Lift moving up')
         elif self.down_goal is not None:
             self.moving = -1
-            print('Lift moving down')
+            # print('Lift moving down')
         else:
             self.moving = 0
-            print('Lift stopped')
+            # print('Lift stopped')
             return self.listen
 
         return self.move
@@ -75,10 +86,25 @@ class Elevator(StateMachine):
 
     def reached(self):
         self.position = self.event.value
-        print('Floor %d reached' % (self.position))
+        # print('Floor %d reached' % (self.position))
 
         if self.goals[self.position]:
-            print('Opening doors')
+            return self.open_doors
+
+        return self.move_on
+
+    def open_doors(self):
+        self.lift_is_open = True
+
+        self.timer_end = dt.datetime.now() + self.open_t
+        self.when_machine_emits('timer', self, self.time)
+        self.when_machine_emits('timer_end', self, self.move_on)
+        self.emit_to(self, 'timer')
+
+        return self.listen
+
+    def move_on(self):
+        self.lift_is_open = False
         self.goals[self.position] = False
 
         if ((self.moving == 1 and self.position == self.up_goal)
@@ -90,7 +116,16 @@ class Elevator(StateMachine):
 
             return self.not_moving
 
+        elif self.moving == 0:
+            return self.not_moving
+
         return self.move
+
+    def time(self):
+        if dt.datetime.now() >= self.timer_end:
+            self.emit_to(self, 'timer_end')
+        else:
+            self.emit_to(self, 'timer')
 
 
 class ElevatorCaret(StateMachine):
@@ -98,9 +133,12 @@ class ElevatorCaret(StateMachine):
         super().__init__(ctl, ctx)
 
         self.step = 0
-        self.steps = 500000
+        self.step_t = dt.timedelta(milliseconds=1000)
         self.position = 0
         self.direction = 0
+
+        self.timer_start = None
+        self.timer_end = None
 
         self.init_state = self.setup
 
@@ -111,14 +149,17 @@ class ElevatorCaret(StateMachine):
         self.direction = self.event.value
         self.step = 0
 
-        return self.do_step
+        self.timer_start = dt.datetime.now()
+        self.timer_end = self.timer_start + self.step_t
+        self.when_machine_emits('timer', self, self.reached)
 
-    def do_step(self):
-        if self.step < self.steps:
-            self.step += 1
-            return self.do_step
+        return self.time
 
-        return self.reached
+    def time(self):
+        if dt.datetime.now() < self.timer_end:
+            return self.time
+
+        self.emit_to(self, 'timer')
 
     def reached(self):
         self.position += self.direction
@@ -130,29 +171,37 @@ class ElevatorKeys(StateMachine):
     def __init__(self, ctl, ctx, n):
         super().__init__(ctl, ctx)
 
+        self.info = [
+            ('pressed:%d', 'level')
+        ]
+
         self.n = n
 
-        self.period = 1000000
-        self.var = 2
+        self.press_t = dt.timedelta(milliseconds=5000)
 
         self.i = 0
         self.w = 0
         self.level = 0
 
+        self.timer_end = None
+
         self.init_state = self.press
 
     def setup(self):
         self.i = 0
-        self.w = self.period - self.var + randint(0, self.var * 2 - 1)
-
         return self.wait
 
     def wait(self):
-        if self.i < self.w:
-            self.i += 1
-            return self.wait
+        self.timer_end = dt.datetime.now() + self.press_t
+        self.when_machine_emits('timer', self, self.press)
 
-        return self.press
+        return self.time
+
+    def time(self):
+        if dt.datetime.now() < self.timer_end:
+            return self.time
+
+        self.emit_to(self, 'timer')
 
     def press(self):
         self.level = randint(0, self.n - 1)
