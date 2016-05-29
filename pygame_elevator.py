@@ -2,6 +2,7 @@ from simulator import MachineControl, StateMachine
 from elevator import Elevator, ElevatorCaret
 import pygame
 import datetime as dt
+from math import floor
 
 
 class PygameElevator(Elevator):
@@ -107,6 +108,7 @@ class PygameElevatorKeys(StateMachine):
     def setup(self):
         pygame.event.set_allowed(None)
         pygame.event.set_allowed(pygame.MOUSEBUTTONUP)
+
         self.keys = pygame.image.load('simulator/img/elevator_keys.png')
         self.emit_to(self.ctx, 'pg_obj_ready',
                      value=(self.keys, (self.keys_x, self.keys_y)))
@@ -126,7 +128,7 @@ class PygameElevatorKeys(StateMachine):
                 self.pg_event.pos[0] > self.keys_x + self.keys_size):
             return self.handle_event
 
-        self.key = self.n - int(
+        self.key = self.n - floor(
             (self.pg_event.pos[1] - self.keys_y) / self.keys_size)
         if self.key < 0 or self.key > self.n:
             return self.handle_event
@@ -136,6 +138,6 @@ class PygameElevatorKeys(StateMachine):
 
 
 if __name__ == '__main__':
-    ctl = MachineControl(debug=True)
-    # ctl = MachineControl(debug=False)
+    # ctl = MachineControl(debug=True)
+    ctl = MachineControl(debug=False)
     ctl.run(PygameElevator)
