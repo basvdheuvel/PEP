@@ -19,6 +19,10 @@ class PygameElevator(Elevator):
         self.lift_open = None
         self.lift_closed = None
 
+        self.goals_size = 50
+        self.goals_y = 225
+        self.goals_x = 530
+
         self.caret_class = PygameElevatorCaret
         self.key_class = PygameElevatorKeys
 
@@ -43,6 +47,14 @@ class PygameElevator(Elevator):
             self.screen.blit(self.lift_open, (0, 0))
         else:
             self.screen.blit(self.lift_closed, (0, 0))
+
+        for i, goal in enumerate(self.goals):
+            if goal is False:
+                continue
+
+            pygame.draw.circle(self.screen, (0, 0, 0), (self.goals_x, (
+                self.goals_y + (self.n - i - 1) * self.goals_size)),
+                int(self.goals_size / 2) + 2, 2)
 
         for pg_obj in self.pygame_objects:
             self.screen.blit(*pg_obj)
