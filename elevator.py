@@ -47,7 +47,6 @@ class Elevator(StateMachine):
 
     def press(self):
         goal = self.event.value
-        print('%d pressed' % (goal))
 
         self.goals[goal] = True
 
@@ -58,9 +57,6 @@ class Elevator(StateMachine):
                                        or goal < self.down_goal):
             self.down_goal = goal
 
-        # print('Current goals', [i for i, g in enumerate(self.goals)
-        #                         if g])
-
         if self.moving == 0:
             if self.up_goal is not None or self.down_goal is not None:
                 return self.not_moving
@@ -70,23 +66,20 @@ class Elevator(StateMachine):
     def not_moving(self):
         if self.up_goal is not None:
             self.moving = 1
-            # print('Lift moving up')
         elif self.down_goal is not None:
             self.moving = -1
-            # print('Lift moving down')
         else:
             self.moving = 0
-            # print('Lift stopped')
             return self.listen
 
         return self.move
 
     def move(self):
+        self.position += self.moving * .5
         self.emit_to(self.caret_machine, 'move', value=self.moving)
 
     def reached(self):
         self.position = self.event.value
-        # print('Floor %d reached' % (self.position))
 
         if self.goals[self.position]:
             return self.open_doors
