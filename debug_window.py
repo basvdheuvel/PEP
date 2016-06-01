@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
+from tkinter.font import Font
 import sys
 import fcntl
 import os
@@ -84,15 +85,19 @@ class Window(tk.Tk):
         """
         super().__init__()
 
+        self.font = Font(size=20)
+
         self.title('State Machine')
 
         self.frame = tk.Frame(self)
         self.frame.pack(fill='both', expand=True)
 
-        self.text = ScrolledText(self.frame, wrap='word')
+        self.text = ScrolledText(self.frame, wrap='word', font=self.font)
         self.text.configure(state='disabled')
         self.text.pack(side='top', fill='both', expand=True)
         self.text.bind('<1>', lambda ev: self.text.focus_set())
+
+        self.geometry('500x400')
 
         self.after(1, self.do_read)
 
