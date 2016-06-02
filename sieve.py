@@ -145,5 +145,6 @@ class Picker(StateMachine):
 
 
 if __name__ == '__main__':
-    ctl = MachineControl(debug=True, step=True)
-    ctl.run(Sieve, 3)
+    # ctl = MachineControl(debug=True, step=True)
+    ctl = MachineControl(debug=False, step=False)
+    ctl.run(Sieve, 100)
