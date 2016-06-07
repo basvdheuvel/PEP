@@ -24,7 +24,7 @@ class DebugWindow:
         pipe to be used for text directly.
 
         Keyword arguments:
-        title -- the window's initial title (default 'State Machine')
+            title: the window's initial title (default 'State Machine')
         """
         self.proc = subprocess.Popen(
             [sys.executable, os.path.realpath(__file__)],
@@ -39,7 +39,7 @@ class DebugWindow:
         This is ignored.
 
         Arguments:
-        text -- text excluding newline
+            text: text excluding newline
         """
         try:
             self.proc.stdin.write(text + '\n')
@@ -51,7 +51,7 @@ class DebugWindow:
         """Set the window's title.
 
         Arguments:
-        title -- the title
+            title: the title
         """
         self.write('#' + title)
 
@@ -72,7 +72,7 @@ class Window(tk.Tk):
     """Show a Tk window with scrollable text from stdin.
 
     Checks stdin for a new line every one millisecond. If the line starts with
-    a `#', the rest of the line is used as a new title for the window.
+    a \`#', the rest of the line is used as a new title for the window.
     Otherwise, the line is appended to the textfield, including the newline
     character.
     """
@@ -113,11 +113,11 @@ class Window(tk.Tk):
     def process_line(self, line):
         """Process a line for debug display.
 
-        If a line starts with `#', change the window's title. Otherwise, write
+        If a line starts with \`#', change the window's title. Otherwise, write
         the line to the textbox.
 
         Arguments:
-        line -- the line to be processed, including newline character
+            line: the line to be processed, including newline character
         """
         if line[0] == '#':
             self.title(line[1:].rstrip('\n'))
@@ -129,7 +129,7 @@ class Window(tk.Tk):
         """Write text to the end of the textfield.
 
         Arguments:
-        text -- the text to be added to the textfield.
+            text: the text to be added to the textfield.
         """
         self.text.configure(state='normal')
 

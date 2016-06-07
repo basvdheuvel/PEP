@@ -1,4 +1,4 @@
-from debug_window import DebugWindow
+from simulator.debug_window import DebugWindow
 from time import sleep
 
 

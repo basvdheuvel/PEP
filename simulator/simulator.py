@@ -9,13 +9,14 @@ The scheduling method is deterministicly sequential. No concurrent execution is
 implemented.
 
 Classes:
-MachineControl -- manages and schedules state machines and events
-Event -- event for communication between state machines
-StateMachine -- superclass for all possible state machines
+
+* MachineControl: manages and schedules state machines and events
+* Event: event for communication between state machines
+* StateMachine: superclass for all possible state machines
 """
 from collections import deque as queue
 
-from debug_window import DebugWindow
+from .debug_window import DebugWindow
 
 
 class MachineControl:
@@ -44,10 +45,10 @@ class MachineControl:
         The `ctx` variable is not yet set. This happens when the simulator is
         started.
 
-        Keyword arguments:
-        debug -- opens a window for each state machine showing state and event
-            information if True (default True)
-        step -- allows one to cycle stepwise (default False)
+        Keyword Args:
+            debug: opens a window for each state machine showing state \
+            and event information if True (default True)
+            step: allows one to cycle stepwise (default False)
         """
         self.machines = queue()
 
@@ -70,17 +71,15 @@ class MachineControl:
         """Start a state machine.
 
         Initializes a machine, given arbitrary arguments, and adds it to the
-        machine queue. After this, some event reactions are added for this
-        machine, the `start' and the `halt' events. Finally, a `start' event is
-        emitted to the newly created machine.
+        machine queue. After this, event reaction to \`halt' is added.
 
         If debugging is turned on, this also starts a debug window, able to
         show state and event information.
 
         Arguments:
-        machine_cls -- a StateMachine subclass
-        ctx -- the state machine that starts this new machine
-        *args/**kwargs -- any arguments the state machine takes
+            machine_cls: a StateMachine subclass
+            ctx: the state machine that starts this new machine
+            \*args/\*\*kwargs: any arguments the state machine takes
         """
         machine = machine_cls(self, ctx, *args, **kwargs)
         machine.current_state = machine.init_state
@@ -99,9 +98,9 @@ class MachineControl:
         """Add a reaction to an event.
 
         Arguments:
-        typ -- the event's type string
-        reactor -- the StateMachine that should react
-        state -- the state the machine should transition to, a method
+            typ: the event's type string
+            reactor: the StateMachine that should react
+            state: the state the machine should transition to, a method
         """
         if typ not in self.event_reactions:
             self.event_reactions[typ] = {}
@@ -112,8 +111,8 @@ class MachineControl:
         """Remove a reaction to an event.
 
         Arguments:
-        typ -- the event's type string
-        reactor -- the StateMachine that should ignore the event
+            typ: the event's type string
+            reactor: the StateMachine that should ignore the event
         """
         try:
             del self.event_reactions[typ][reactor]
@@ -124,10 +123,10 @@ class MachineControl:
         """Add a reaction to a state machine's event.
 
         Arguments:
-        typ -- the event's type string
-        emitter -- the event's emitting StateMachine
-        reactor -- the StateMachine that should react
-        state -- the state the machine should transition to, a method
+            typ: the event's type string
+            emitter: the event's emitting StateMachine
+            reactor: the StateMachine that should react
+            state: the state the machine should transition to, a method
         """
         index = (typ, emitter)
 
@@ -140,9 +139,9 @@ class MachineControl:
         """Remove a reaction to a state machine's event.
 
         Arguments:
-        typ -- the event's type string
-        emitter -- the event's emitting StateMachine
-        reactor -- the StateMachine that should ignore the event
+            typ: the event's type string
+            emitter: the event's emitting StateMachine
+            reactor: the StateMachine that should ignore the event
         """
         index = (typ, emitter)
 
@@ -158,7 +157,7 @@ class MachineControl:
         window.
 
         Arguments:
-        event -- the to be emitted Event
+            event: the to be emitted Event
         """
         self.event_n += 1
         event.n = self.event_n
@@ -181,8 +180,8 @@ class MachineControl:
         StateMachine superclass without a context.
 
         Arguments:
-        machine_cls -- a StateMachine subclass
-        *args/**kwargs -- any arguments the state machine takes
+            machine_cls: a StateMachine subclass
+            \*args/\*\*kwargs: any arguments the state machine takes
         """
         self.ctx = StateMachine(self, None)
         self.start_machine(machine_cls, self.ctx, *args, **kwargs)
@@ -266,8 +265,8 @@ class MachineControl:
         specific and thus have priority.
 
         Arguments:
-        machine -- the reacting state machine, a StateMachine
-        event -- the event to be checked, an Event
+            machine: the reacting state machine, a StateMachine
+            event: the event to be checked, an Event
         """
         index = (event.typ, event.emitter)
         if index in self.machine_reactions:
@@ -288,7 +287,7 @@ class MachineControl:
         """Halt a machine.
 
         If debuggin is on, the machine's debuggin window's title is altered to
-        include `HALTED' and the window's stdin pipe is closed.
+        include \`HALTED' and the window's stdin pipe is closed.
         """
         if self.debug:
             debug_window = self.debug_windows[machine]
@@ -326,7 +325,7 @@ class MachineControl:
         has indicitated any variables as information, these are shown as well.
 
         Arguments:
-        machine -- the StateMachine to show debug information for
+            machine: the StateMachine to show debug information for
         """
         debug_window = self.debug_windows[machine]
         debug_window.write('State: %s' % (machine.current_state.__name__))
@@ -349,10 +348,10 @@ class MachineControl:
         If the machine cycled its halt state, nothing is to be done.
 
         Arguments:
-        machine -- the StateMachine to show debug information for
-        p_state -- the machine's state before the cycle
-        n_state -- the machine's state after the cycle
-        p_var_str -- the machine's variable string before the cycle
+            machine: the StateMachine to show debug information for
+            p_state: the machine's state before the cycle
+            n_state: the machine's state after the cycle
+            p_var_str: the machine's variable string before the cycle
         """
         if p_state.__name__ == 'halt':
             return
@@ -383,15 +382,15 @@ class Event:
         """Initialize the event.
 
         Arguments:
-        typ -- the event's type string
-        emitter -- the StateMachine emitting the event
+            typ: the event's type string
+            emitter: the StateMachine emitting the event
 
         Keyword arguments:
-        value -- value to transmit (default None)
-        destination -- the StateMachine the event should end up with
-            (default None)
-        ack -- whether the receiving machine should emit an acknowledgement
-            (default False)
+            value: value to transmit (default None)
+            destination: the StateMachine the event should end up with \
+                (default None)
+            ack: whether the receiving machine should emit an acknowledgement \
+                (default False)
         """
         self.typ = typ
         self.value = value
@@ -434,8 +433,8 @@ class StateMachine:
         necessities.
 
         Arguments:
-        ctl -- a MachineControl instance
-        ctx -- the machine's context, a StateMachine
+            ctl: a MachineControl instance
+            ctx: the machine's context, a StateMachine
         """
         self.ctl = ctl
         self.ctx = ctx
@@ -475,10 +474,10 @@ class StateMachine:
         """Emit an event.
 
         Arguments:
-        typ -- the event's type string
+            typ: the event's type string
 
         Keyword arguments:
-        value -- value to transmit with the event (default None)
+            value: value to transmit with the event (default None)
         """
         self.emit_to(None, typ, value=value)
 
@@ -486,12 +485,12 @@ class StateMachine:
         """Emit an event to a machine.
 
         Arguments:
-        destination -- the StateMachine to send the event to
-        typ -- the event's type string
+            destination: the StateMachine to send the event to
+            typ: the event's type string
 
         Keyword arguments:
-        value -- value to transmit with the event (default None)
-        ack_state -- a state for acknowledgement, a method
+            value: value to transmit with the event (default None)
+            ack_state: a state for acknowledgement, a method
 
         If `ack_state` is given, the receiving machine will send an
         acknowledgement event. When the emitting machine recieves this event,
@@ -507,8 +506,8 @@ class StateMachine:
         """Instantiate and start a machine.
 
         Arguments:
-        machine_cls -- a StateMachine subclass
-        *args/**kwargs -- any arguments the state machine takes
+            machine_cls: a StateMachine subclass
+            \*args/\*\*kwargs: any arguments the state machine takes
         """
         return self.ctl.start_machine(machine_cls, self, *args, **kwargs)
 
@@ -516,9 +515,9 @@ class StateMachine:
         """Add a machine event reaction.
 
         Arguments:
-        typ -- the event's type string
-        machine -- the emitting StateMachine
-        state -- the state to transition to, a method
+            typ: the event's type string
+            machine: the emitting StateMachine
+            state: the state to transition to, a method
         """
         self.ctl.add_machine_reaction(typ, machine, self, state)
 
@@ -526,8 +525,8 @@ class StateMachine:
         """Add an event reaction.
 
         Arguments:
-        typ -- the event's type string
-        state -- the state to transition to, a method
+            typ: the event's type string
+            state: the state to transition to, a method
         """
         self.ctl.add_event_reaction(typ, self, state)
 
@@ -538,8 +537,8 @@ class StateMachine:
         and of the given type in the machine's inbox are removed.
 
         Arguments:
-        typ -- the event's type string
-        machine -- the event's emitting StateMachine
+            typ: the event's type string
+            machine: the event's emitting StateMachine
         """
         self.ctl.remove_machine_reaction(typ, machine, self)
 
@@ -562,7 +561,7 @@ class StateMachine:
         and of the given type in the machine's inbox are removed.
 
         Arguments:
-        type -- the event's type string
+            type: the event's type string
         """
         self.ctl.remove_event_reaction(typ, self)
 
@@ -582,7 +581,7 @@ class StateMachine:
         """Return a state if a reaction to the event exists.
 
         Arguments:
-        event -- the Event
+            event: the Event
         """
         return self.ctl.filter_event(self, event)
 
@@ -619,8 +618,8 @@ class StateMachine:
 
         Do not extend or override this method.
 
-        First emits `halt', which halts all child machines. Then MachineControl
-        is told to halt the machine.
+        First emits \`halt', which halts all child machines. Then
+        MachineControl is told to halt the machine.
         """
         self.emit('halt')
         self.ctl.halt(self)
