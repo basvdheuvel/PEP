@@ -107,6 +107,7 @@ class PickerManager(StateMachine):
             m = self.pickers[self.i]
             self.ignore_when_machine_emits('pass', m)
             self.ignore_when_machine_emits('fail', m)
+            self.ignore_when_machine_emits('run_ack', m)
 
             self.i += 1
             return self.unlisten_pickers
@@ -146,4 +147,4 @@ class Picker(StateMachine):
 
 if __name__ == '__main__':
     ctl = MachineControl(debug=False, step=False)
-    ctl.run(Sieve, 100)
+    ctl.run(Sieve, 15)

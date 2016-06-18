@@ -187,8 +187,7 @@ class MachineControl:
         self.start_machine(machine_cls, self.ctx, *args, **kwargs)
 
         while self.cycle():
-            if self.step:
-                input('Press enter to step...')
+            ...
 
         self.reset()
 
@@ -213,6 +212,9 @@ class MachineControl:
 
         self.machines.append(machine)
 
+        if machine.is_suspended:
+            return True
+
         c_state = machine.current_state
 
         if self.debug:
@@ -224,6 +226,9 @@ class MachineControl:
 
         if self.debug:
             self.debug_aftercycle(machine, c_state, n_state, var_str)
+
+        if self.step:
+            input('Press enter to step...')
 
         return True
 
@@ -243,15 +248,23 @@ class MachineControl:
         except IndexError:
             return False
 
+        # An event is being distributed.
+
         if event.destination is not None:
             if event.destination in self.machines:
                 event.destination.inbox.append(event)
+
+            event.destination.is_suspended = False
+
             return True
 
         for machine in self.machines:
             if machine == event.emitter:
                 continue
             machine.inbox.append(event)
+
+            # Take all machines out of suspension.
+            machine.is_suspended = False
 
         return True
 
@@ -442,6 +455,8 @@ class StateMachine:
         self.inbox = queue()
         self.event = None
 
+        self.is_suspended = False
+
         self.init_state = self.halt
 
         self.info = []
@@ -597,6 +612,7 @@ class StateMachine:
             self.event = self.inbox.popleft()
         except IndexError:
             self.ctl.react_event = None
+            self.is_suspended = True
             return
 
         reaction = self.filter_event(self.event)
