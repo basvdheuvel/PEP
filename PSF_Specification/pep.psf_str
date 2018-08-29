@@ -1,0 +1,450 @@
+data module QIdentifiers
+begin
+    exports
+    begin
+        sorts
+            QID
+        functions
+            qidNr : QID -> NATURAL
+            qidName : QID -> CHAR-SEQ
+            qident : NATURAL # CHAR-SEQ -> QID
+            qidIn : NATURAL -> QID
+            qidOut : NATURAL -> QID
+            qidMC : -> QID
+            qidM : NATURAL -> QID
+            qidReactions : NATURAL -> QID
+            qidVars : NATURAL -> QID
+    end
+
+    imports
+        Naturals,
+        Strings
+
+    variables
+        n : -> NATURAL
+
+    equations
+        ['] qidIn(n) = qident(n, "in")
+        ['] qidOut(n) = qident(n, "out")
+        ['] qidMC = qident(nat0, "MC")
+        ['] qidM(n) = qident(n, "M")
+        ['] qidReactions(n) = qident(n, "reactions")
+        ['] qidVars(n) = qident(n, "vars")
+end QIdentifiers
+
+data module Events
+begin
+    exports
+    begin
+        sorts
+            EVENT,
+            CUREV
+        functions
+            eq : EVENT # EVENT -> BOOLEAN
+            evSender : EVENT -> NATURAL
+            evDest : EVENT -> NATURAL
+            evType : EVENT -> CHAR-SEQ
+            evAck : EVENT -> BOOLEAN
+            event : NATURAL # NATURAL # CHAR-SEQ # BOOLEAN -> EVENT
+            noDest : -> NATURAL
+            nullEvent : -> EVENT
+            curev-eq : CUREV # CUREV -> BOOLEAN
+            evCurev : EVENT -> CUREV
+            curevSender : CUREV -> NATURAL
+            curevType : CUREV -> CHAR-SEQ
+            curev : NATURAL # CHAR-SEQ -> CUREV
+            nullCurev : -> CUREV
+    end
+
+    imports
+        Naturals,
+        Strings,
+        Booleans
+
+    variables
+        e1, e2 : -> EVENT
+        ce1, ce2 : -> CUREV
+        s, d : -> NATURAL
+        t : -> CHAR-SEQ
+        a : -> BOOLEAN
+
+    equations
+        ['] eq(e1, e2) = and(and(and(eq(evSender(e1), evSender(e2)),
+                                     eq(evDest(e1), evDest(e2))),
+                                 eq(evType(e1), evType(e2))),
+                             eq(evAck(e1), evAck(e2)))
+        ['] evSender(event(s, d, t, a)) = s
+        ['] evDest(event(s, d, t, a)) = d
+        ['] evType(event(s, d, t, a)) = t
+        ['] evAck(event(s, d, t, a)) = a
+        ['] curev-eq(ce1, ce2) = and(eq(curevSender(ce1), curevSender(ce2)),
+                                     eq(curevType(ce1), curevType(ce2)))
+        ['] evCurev(event(s, d, t, a)) = curev(s, t)
+        ['] curevSender(curev(s, t)) = s
+        ['] curevType(curev(s, t)) = t
+end Events
+
+process module PEPSpec
+begin
+    imports
+        Naturals,
+        Strings,
+        Events,
+        QIdentifiers,
+
+        Sequences {
+            Elements bound by [
+                ITEM -> EVENT,
+                eq -> eq,
+                error-element -> nullEvent
+            ] to Events
+        },
+
+        Quasi-Sets {
+            Elements bound by [
+                ITEM -> NATURAL,
+                error-element -> nat0
+            ] to Naturals
+            renamed by [
+                SEQ -> NAT-SEQ,
+                empty-sequence -> mt-set
+            ]
+        },
+
+        Tables {
+            Keys bound by [
+                KEY -> CUREV,
+                eq -> curev-eq
+            ] to Events
+            Items bound by [
+                ITEM -> CHAR-SEQ
+            ] to Strings
+            renamed by [
+                TABLE -> REACTIONS-TBL,
+                empty-table -> mt-reactions-tbl,
+                lookup -> qry-reactions,
+                found -> fnd-reactions,
+                not-found -> not-fnd-reactions,
+                insert -> ins-reactions,
+                delete -> dlt-reactions
+            ]
+        },
+
+        Tables {
+            Keys bound by [
+                KEY -> CHAR-SEQ
+            ] to Events
+            Items bound by [
+                ITEM -> NATURAL
+            ] to Strings
+            renamed by [
+                TABLE -> VARS-TBL,
+                empty-table -> mt-vars-tbl,
+                lookup -> qry-vars,
+                found -> fnd-vars,
+                not-found -> not-fnd-vars,
+                insert -> ins-vars,
+                delete -> dlt-vars
+            ]
+        }
+
+    atoms
+        qempty, qempty', qempty'' : QID
+        deq, deq', deq'' : QID # EVENT
+        enq, enq', enq'' : QID # EVENT
+
+        get-reactions, get-reactions', get-reactions'' : NATURAL # CUREV # CHAR-SEQ
+        not-set-reactions, not-set-reactions', not-set-reactions'' : NATURAL # CUREV
+        set-reactions, set-reactions', set-reactions'' : NATURAL # CUREV # CHAR-SEQ
+        unset-reactions, unset-reactions', unset-reactions'' : NATURAL # CUREV
+
+        get-vars, get-vars', get-vars'' : NATURAL # CHAR-SEQ # NATURAL
+        not-set-vars, not-set-vars', not-set-vars'' : NATURAL # CHAR-SEQ
+        set-vars, set-vars', set-vars'' : NATURAL # CHAR-SEQ # NATURAL
+        unset-vars, unset-vars', unset-vars'' : NATURAL # CHAR-SEQ
+
+        out, out', out'',
+        distrib, distrib', distrib'' : NATURAL # NATURAL # CHAR-SEQ # BOOLEAN
+
+        haltq, haltq', haltq'',
+        halt, halt', halt'' : QID
+
+        start, start', start'' : NATURAL # CHAR-SEQ
+        new-id, new-id', new-id'' : NATURAL # NATURAL
+        otherstuff
+
+        cycle
+        seek
+
+    processes
+        Q : QID # SEQ
+
+        Treactions : NATURAL # REACTIONS-TBL
+        Tvars : NATURAL # VARS-TBL
+
+        M : CHAR-SEQ # NATURAL # NATURAL
+        Mout : NATURAL
+        Min : NATURAL
+        Mprog : CHAR-SEQ # NATURAL
+        S : CHAR-SEQ # NATURAL # CHAR-SEQ # CUREV
+
+        MC : NATURAL # NAT-SEQ
+        MCsched : NATURAL # NAT-SEQ
+        MCschedSum : NATURAL # NAT-SEQ # NAT-SEQ # NATURAL
+        distribMerge : NATURAL # CHAR-SEQ # BOOLEAN # NAT-SEQ # NATURAL
+        MCin
+
+        harddisk
+
+    sets
+        of CHAR-SEQ
+            T = {"halt", "cycle", "cycleack", "read", "shutdown", "interrupt",
+                 "seek", "found-data", "return"}
+            M = {"CPU", "HD", "HDHead", "ProgA", "ProgB"}
+            S = {"halt", "listen", "setup", "cycle", "hd-read", "hd-interrupt",
+                 "seek", "found-data", "program", "finish"}
+            Vars = {"ctx", "hd", "prog-a", "prog-b", "hd-reader", "hd-head"}
+
+        of NATURAL
+            N = {nat0, nat1, nat2, nat3, nat4, nat5}
+
+        of BOOLEAN
+            A = {true, false}
+
+        of EVENT
+            Ev = {event(s, d, t, a) | s in N, d in N, t in T, a in A}
+
+        of CUREV
+            CurEv = {curev(s, t) | s in N, t in T}
+
+        of atoms
+            H = {qempty(qid), qempty'(qid),
+                 enq(qid, e), enq'(qid, e),
+                 deq(qid, e), deq'(qid, e),
+                 haltq(qid), haltq'(qid),
+                 halt(qid), halt'(qid) | qid in QID, e in Ev}
+            + {get-reactions(id, ce, state), get-reactions'(id, ce, state),
+               not-set-reactions(id, ce), not-set-reactions'(id, ce),
+               set-reactions(id, ce, state), set-reactions'(id, ce, state),
+               unset-reactions(id, ce), unset-reactions'(id, ce) | id in N, ce in CurEv, state in S}
+            + {get-vars(id, var, ptr), get-vars'(id, var, ptr),
+               not-set-vars(id, var), not-set-vars'(id, var),
+               set-vars(id, var, ptr), set-vars'(id, var, ptr),
+               unset-vars(id, var), unset-vars'(id, var) | id in N, var in Vars, ptr in N}
+            + {out(id, d, t, a), out'(id, d, t, a),
+               distrib(id, s, t, a), distrib'(id, s, t, a) | id in N, s in N, d in N, t in T, a in A}
+            + {start(id, m), start'(id, m),
+               new-id(id, nid), new-id'(id, nid) | id in N, m in M, nid in N}
+
+    communications
+        qempty(qid) | qempty'(qid) = qempty''(qid) for qid in QID
+        enq(qid, e) | enq'(qid, e) = enq''(qid, e) for qid in QID, e in Ev
+        deq(qid, e) | deq'(qid, e) = deq''(qid, e) for qid in QID, e in Ev
+        haltq(qid) | haltq'(qid) = haltq''(qid) for qid in QID
+
+        get-reactions(id, ce, state) | get-reactions'(id, ce, state) = get-reactions''(id, ce, state) for id in NATURAL, ce in CUREV, state in S
+        not-set-reactions(id, ce) | not-set-reactions'(id, ce) = not-set-reactions''(id, ce) for id in NATURAL, ce in CUREV
+        set-reactions(id, ce, state) | set-reactions'(id, ce, state) = set-reactions''(id, ce, state) for id in NATURAL, ce in CUREV, state in S
+        unset-reactions(id, ce) | unset-reactions'(id, ce) = unset-reactions''(id, ce) for id in NATURAL, ce in CUREV
+
+        get-vars(id, var, ptr) | get-vars'(id, var, ptr) = get-vars''(id, var, ptr) for id in NATURAL, var in CHAR-SEQ, ptr in N
+        not-set-vars(id, var) | not-set-vars'(id, var) = not-set-vars''(id, var) for id in NATURAL, var in CHAR-SEQ
+        set-vars(id, var, ptr) | set-vars'(id, var, ptr) = set-vars''(id, var, ptr) for id in NATURAL, var in CHAR-SEQ, ptr in N
+        unset-vars(id, var) | unset-vars'(id, var) = unset-vars''(id, var) for id in NATURAL, var in CHAR-SEQ
+
+        out(id, d, t, a) | out'(id, d, t, a) = out''(id, d, t, a) for
+            id in N, d in N, t in T, a in BOOLEAN
+        distrib(id, s, t, a) | distrib'(id, s, t, a) = distrib''(id, s, t, a) for
+            id in N, s in N, t in T, a in BOOLEAN
+        halt(qid) | halt'(qid) = halt''(qid) for qid in QID
+
+        start(id, m) | start'(id, m) = start''(id, m) for id in N, m in M
+        new-id(id, nid) | new-id'(id, nid) = new-id''(id, nid) for id in N, nid in N
+
+    variables
+        qid : -> QID
+        id, ctxid, n : -> NATURAL
+        q : -> SEQ
+        m : -> CHAR-SEQ
+        orig-l, l : -> NAT-SEQ
+        s : -> NATURAL
+        t : -> CHAR-SEQ
+        a : -> BOOLEAN
+        e : -> EVENT
+        ce : -> CUREV
+        tbl-reactions : -> REACTIONS-TBL
+        tbl-vars : -> VARS-TBL
+        var : -> CHAR-SEQ
+        ptr : -> NATURAL
+
+    definitions
+        Q(qid, q) = [eq(q, empty-sequence)=true] -> qempty(qid) . Q(qid, q)
+            + [not(eq(q, empty-sequence))=true] -> deq(qid, first(q)) . Q(qid, tail(q))
+            + sum(s in N, sum(d in N, sum(t in T, sum(a in A,
+                enq'(qid, event(s, d, t, a)) . Q(qid, q ^ event(s, d, t, a))))))
+            + haltq'(qid)
+
+        Treactions(id, tbl-reactions) = sum(s in N, sum(t in T,
+            [qry-reactions(tbl-reactions, curev(s, t)) = not-fnd-reactions] -> not-set-reactions(id, curev(s, t))
+                . Treactions(id, tbl-reactions)
+            + sum(state in S,
+                [qry-reactions(tbl-reactions, curev(s, t)) = fnd-reactions(state)] -> get-reactions(id, curev(s, t), state)
+                    . Treactions(id, tbl-reactions)
+                + set-reactions'(id, curev(s, t), state) . Treactions(id, ins-reactions(tbl-reactions, curev(s, t), state)))
+            + unset-reactions'(id, curev(s, t)) . Treactions(id, dlt-reactions(tbl-reactions, curev(s, t)))))
+        + halt'(qidReactions(id))
+
+        Tvars(id, tbl-vars) = sum(var in Vars,
+            [qry-vars(tbl-vars, var) = not-fnd-vars] -> not-set-vars(id, var)
+                . Tvars(id, tbl-vars)
+            + sum(ptr in N,
+                [qry-vars(tbl-vars, var) = fnd-vars(ptr)] -> get-vars(id, var, ptr)
+                    . Tvars(id, tbl-vars)
+                + set-vars'(id, var, ptr) . Tvars(id, ins-vars(tbl-vars, var, ptr)))
+            + unset-vars'(id, var) . Tvars(id, dlt-vars(tbl-vars, var)))
+        + halt'(qidVars(id))
+
+        M(m, id, ctxid) = Mprog(m, id)
+            || Treactions(id, ins-reactions(mt-reactions-tbl, curev(ctxid, "halt"), "halt"))
+            || Tvars(id, ins-vars(mt-vars-tbl, "ctx", ctxid))
+            || Min(id) || Mout(id)
+            || Q(qidIn(id), empty-sequence) || Q(qidOut(id), empty-sequence)
+
+        Min(id) = sum(s in N, sum(t in T, sum(a in A,
+                distrib'(id, s, t, a) . enq(qidIn(id), event(s, nat0, t, a)) . Min(id))))
+            + halt'(qidIn(id))
+
+        Mout(id) = sum(d in N, sum(t in T, sum(a in A,
+                deq'(qidOut(id), event(id, d, t, a)) . out(id, d, t, a) . Mout(id))))
+            + halt'(qidOut(id))
+
+        S(m, id, "halt", ce) = halt(qidM(id)) . (
+                halt(qidReactions(id)) || halt(qidVars(id))
+                || haltq(qidIn(id)) || haltq(qidOut(id))
+                || halt(qidIn(id)) || halt(qidOut(id))
+            )
+
+        S(m, id, "listen", ce) = qempty'(qidIn(id)) . S(m, id, "listen", ce)
+            + sum(s in N, sum(d in N, sum(t in T, sum(a in A, deq'(qidIn(id), event(s, d, t, a)) . (
+                sum(state in S, get-reactions'(id, curev(s, t), state) . (
+                    [a=true] -> enq(qidOut(id), event(id, s, t^'a'^'c'^'k', false)) . S(m, id, state, curev(s, t))
+                    + [a=false] -> S(m, id, state, curev(s, t))
+                )) + not-set-reactions'(id, curev(s, t)) . (
+                    sum(state in S, get-reactions'(id, curev(nat0, t), state) . (
+                        [a=true] -> enq(qidOut(id), event(id, s, t^'a'^'c'^'k', false)) . S(m, id, state, curev(s, t))
+                        + [a=false] -> S(m, id, state, curev(s, t))
+                    )) + not-set-reactions'(id, curev(nat0, t)) . S(m, id, "listen", ce)
+                )
+            )))))
+
+        MC(n, l) = MCsched(n, l) || Q(qidMC, empty-sequence) || MCin
+
+        MCin = sum(s in N, sum(d in N, sum(t in T, sum(a in A,
+            out'(s, d, t, a) . enq(qidMC, event(s, d, t, a)) . MCin))))
+        + halt'(qidMC)
+
+        MCsched(n, l) = [not(eq(l, mt-set))=true] -> MCschedSum(n, l, tail(l), first(l))
+            + sum(s in N, sum(d in N, sum(t in T, sum(a in A,
+                deq'(qidMC, event(s, d, t, a)) . (
+                    [eq(d, nat0)=true] ->
+                        ([not(eq(l, mt-set^s))=true] -> distribMerge(s, t, a, tail(l), first(l)))
+                        . MCsched(n, l)
+                    + [not(eq(d, nat0))=true] -> distrib(d, s, t, a) . MCsched(n, l)
+                )
+            ))))
+
+        MCschedSum(n, orig-l, l, id) = [not(eq(l, mt-set))=true] -> MCschedSum(n, orig-l, tail(l), first(l))
+            + sum(m in M, start'(id, m) . new-id(id, n+nat1) . (
+                MCsched(n+nat1, orig-l^(n+nat1)) || M(m, n+nat1, id)
+            ))
+            + halt'(qidM(id)) . enq(qidMC, event(id, nat0, "halt", false)) . (
+                [eq(set-delete(id, orig-l), mt-set)=true] -> (halt(qidMC) || haltq(qidMC))
+                + [not(eq(set-delete(id, orig-l), mt-set))=true] -> MCsched(n, set-delete(id, orig-l))
+            )
+
+        distribMerge(s, t, a, l, id) = [eq(id, s)=true] -> distribMerge(s, t, a, tail(l), first(l))
+            + [not(eq(id, s))=true] -> (
+                [eq(l, mt-set)=true] -> distrib(id, s, t, a)
+                + [not(eq(l, mt-set))=true] -> (distrib(id, s, t, a) || distribMerge(s, t, a, tail(l), first(l)))
+            )
+
+        S("CPU", id, "setup", ce) =
+            start(id, "HD") . sum(n in N, new-id'(id, n) . set-vars(id, "hd", n))
+            . start(id, "ProgA") . sum(n in N, new-id'(id, n) . set-vars(id, "prog-a", n))
+            --. start(id, "ProgB") . sum(n in N, new-id'(id, n) . set-vars(id, "prog-b", n))
+            . set-reactions(id, curev(nat0, "cycle"), "cycle")
+            . set-reactions(id, curev(nat0, "read"), "hd-read")
+            . set-reactions(id, curev(nat0, "shutdown"), "halt")
+            . S("CPU", id, "listen", ce)
+
+        S("CPU", id, "cycle", ce) =
+            cycle . S("CPU", id, "listen", ce)
+
+        S("CPU", id, "hd-read", ce) =
+            set-vars(id, "hd-reader", curevSender(ce))
+            . sum(n in N, get-vars'(id, "hd", n) . enq(qidOut(id), event(id, n, "read", false))
+                . set-reactions(id, curev(n, "interrupt"), "hd-interrupt"))
+            . S("CPU", id, "listen", ce)
+
+        S("CPU", id, "hd-interrupt", ce) =
+            sum(n in N, get-vars'(id, "hd-reader", n) . enq(qidOut(id), event(id, n, "return", false)))
+            . sum(n in N, get-vars'(id, "hd", n) . unset-reactions(id, curev(n, "interrupt")))
+            . S("CPU", id, "listen", ce)
+
+        Mprog("CPU", id) = S("CPU", id, "setup", nullCurev)
+
+        S("HD", id, "setup", ce) =
+            start(id, "HDHead") . sum(n in N, new-id'(id, n) . set-vars(id, "hd-head", n))
+            . sum(n in N, get-vars'(id, "ctx", n) . set-reactions(id, curev(n, "read"), "seek"))
+            . S("HD", id, "listen", ce)
+
+        S("HD", id, "seek", ce) =
+            sum(n in N, get-vars'(id, "ctx", n) . unset-reactions(id, curev(n, "read")))
+            . sum(n in N, get-vars'(id, "hd-head", n) . enq(qidOut(id), event(id, n, "seek", false))
+                . set-reactions(id, curev(n, "found-data"), "found-data"))
+            . S("HD", id, "listen", ce)
+
+        S("HD", id, "found-data", ce) =
+            sum(n in N, get-vars'(id, "hd-head", n) . unset-reactions(id, curev(n, "found-data")))
+            . sum(n in N, get-vars'(id, "ctx", n) . set-reactions(id, curev(n, "read"), "seek")
+                . enq(qidOut(id), event(id, n, "interrupt", false)))
+            . S("HD", id, "listen", ce)
+
+        Mprog("HD", id) = S("HD", id, "setup", nullCurev)
+
+        S("HDHead", id, "setup", ce) =
+            sum(n in N, get-vars'(id, "ctx", n) . set-reactions(id, curev(n, "seek"), "seek"))
+            . S("HDHead", id, "listen", ce)
+
+        S("HDHead", id, "seek", ce) =
+            (
+                sum(n in N, get-vars'(id, "ctx", n) . enq(qidOut(id), event(id, n, "found-data", false)))
+                . S("HDHead", id, "listen", ce)
+            ) + (
+                seek . S("HDHead", id, "seek", ce)
+            )
+
+        Mprog("HDHead", id) = S("HDHead", id, "setup", nullCurev)
+
+        S("ProgA", id, "program", ce) =
+            sum(n in N, get-vars'(id, "ctx", n) . enq(qidOut(id), event(id, n, "read", false))
+                . set-reactions(id, curev(n, "return"), "finish"))
+            . S("ProgA", id, "listen", ce)
+
+        S("ProgA", id, "finish", ce) =
+            sum(n in N, get-vars'(id, "ctx", n) . unset-reactions(id, curev(n, "return"))
+                . enq(qidOut(id), event(id, n, "shutdown", false)))
+            . S("ProgA", id, "listen", ce)
+
+        Mprog("ProgA", id) = S("ProgA", id, "program", nullCurev)
+
+        S("ProgB", id, "cycle", ce) =
+            sum(n in N, get-vars'(id, "ctx", n)
+                . enq(qidOut(id), event(id, n, "cycle", true))
+                . set-reactions(id, curev(n, "cycleack"), "cycle")
+            ) . S("ProgB", id, "listen", ce)
+
+        Mprog("ProgB", id) = S("ProgB", id, "cycle", nullCurev)
+
+        harddisk = encaps(H, MC(nat1, mt-set^nat1) || M("CPU", nat1, nat0))
+end PEPSpec
